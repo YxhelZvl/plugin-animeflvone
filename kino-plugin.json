@@ -1,7 +1,7 @@
 {
   "id": "animeflvone",
   "name": "AnimeFLV One",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "apiVersion": 4,
   "entry": "plugin.js",
   "author": "YxhelZvl",
