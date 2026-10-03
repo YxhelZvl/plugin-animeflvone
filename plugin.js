@@ -9,14 +9,12 @@ function cleanTitle(title) {
     return title
         .replace(/&#8217;/g, "'")
         .replace(/^Ver\s+/i, '')
-        .replace(
-            /Capítulo|Capitulo|Episodio|episodio|Episode|episode|Movie|\(Sin Relleno\)|\(TV\)/gi,
-            ''
-        )
-        .replace(
-            /Sub\s|Español|Latino|Castellano|HD|Temporada\s+\d+|\(\d{4}\)/gi,
-            ''
-        )
+        // Elimina "Episodio 13", "Capítulo 5", etc. (con o sin número)
+        .replace(/(?:Capítulo|Capitulo|Episodio|Episode)\s*\d*/gi, '')
+        .replace(/Movie|\(Sin Relleno\)|\(TV\)/gi, '')
+        .replace(/Sub\s|Español|Latino|Castellano|HD|Temporada\s+\d+|\(\d{4}\)/gi, '')
+        // Limpia espacios dobles que puedan quedar al borrar texto
+        .replace(/\s+/g, ' ')
         .trim()
 }
 
@@ -44,11 +42,10 @@ export async function home() {
             const articles = bloque.match(/<article[\s\S]*?<\/article>/g) || []
             const items = []
 
-            for (let i = 0; i < Math.min(20, articles.length); i++) {
+                        for (let i = 0; i < Math.min(20, articles.length); i++) {
                 const article = articles[i]
                 const urlMatch = article.match(/href="([^"]+)"/)
-                const titleMatch =
-                    article.match(/alt="([^"]+)"/) || article.match(/title="([^"]+)"/)
+                const titleMatch = article.match(/alt="([^"]+)"/) || article.match(/title="([^"]+)"/)
                 const thumbMatch = article.match(/src="([^"]+)"/)
                 const episMatch = article.match(/<u>Episodio\s+([^<]+)<\/u>/i)
 
@@ -57,17 +54,17 @@ export async function home() {
                     if (itemUrl.startsWith('./')) itemUrl = HOST + itemUrl.substring(1)
                     else if (itemUrl.startsWith('/')) itemUrl = HOST + itemUrl
 
-                    const title = titleMatch[1]
-                        .replace(/&#8217;/g, "'")
-                        .replace(/^Ver\s+/i, '')
+                    // Usamos cleanTitle para eliminar el "episodio X" redundante del alt
+                    const cleanName = cleanTitle(titleMatch[1])
                     const thumb = thumbMatch ? thumbMatch[1] : ''
                     const epis = episMatch ? episMatch[1].trim() : '1'
 
                     items.push({
                         id: getStableId(itemUrl),
                         ref: `act:resolve_ep|url:${itemUrl}`,
-                        title: `[COLOR goldenrod]Epis.[/COLOR] ${epis} ${title}`,
-                        kind: 'movie', // 'movie' permite reproducción directa desde la lista
+                        // Título limpio, sin códigos de color y bien formateado
+                        title: `Episodio ${epis} - ${cleanName}`,
+                        kind: 'movie',
                         poster: thumb.startsWith('http') ? thumb : HOST + thumb
                     })
                 }
