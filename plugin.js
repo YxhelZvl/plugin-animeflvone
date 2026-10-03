@@ -193,6 +193,7 @@ export async function browse(ref, cursor) {
 
     for (const article of articles) {
         const urlMatch = article.match(/href="([^"]+)"/)
+        
         const titleMatch =
             article.match(/alt="([^"]+)"/) || article.match(/title="([^"]+)"/)
         const thumbMatch = article.match(/src="([^"]+)"/)
@@ -295,6 +296,7 @@ export async function search(query) {
 }
 
 // 4. Lista de Episodios
+// 4. Lista de Episodios
 export async function episodes(ref) {
     await null
     const parts = ref.split('|')
@@ -318,25 +320,40 @@ export async function episodes(ref) {
     const epsMatch = html.match(/var\s+eps\s*=\s*(\[[\s\S]*?\]);/)
     if (!epsMatch) throw kino.error('not_found', 'No se encontraron episodios')
 
-    const epsArrayStr = epsMatch[1]
-    const matches = epsArrayStr.match(/"([^"]+)"/g) || []
-    const episodes = []
+    try {
+        // Parseamos el array JSON correctamente. 
+        // El formato real en la web es: [["10","0",""],["9","0",""],["8","0",""],...]
+        // donde el primer elemento de cada sub-array es el número de episodio.
+        const epsArray = JSON.parse(epsMatch[1])
+        const episodes = []
 
-    for (let i = 0; i < matches.length; i++) {
-        const epNum = matches[i].replace(/"/g, '')
-        const epUrl = url.replace('/anime/', '/ver/') + '-' + epNum
-        const epNumClean = epNum.replace(/[^0-9]/g, '')
-        const epNumber = epNumClean ? parseInt(epNumClean, 10) : i + 1
+        for (let i = 0; i < epsArray.length; i++) {
+            const epData = epsArray[i]
+            const epNum = epData[0] // El número de episodio real (ej: "10", "9", "3")
+            
+            // Construimos la URL reemplazando /anime/ por /ver/ y añadiendo el número
+            const epUrl = url.replace('/anime/', '/ver/') + '-' + epNum
+            
+            // Limpiamos el número para mostrarlo y ordenarlo correctamente
+            const epNumClean = epNum.replace(/[^0-9]/g, '')
+            const epNumber = epNumClean ? parseInt(epNumClean, 10) : (i + 1)
 
-        episodes.push({
-            number: epNumber,
-            title: `Episodio ${epNum}`,
-            ref: `act:resolve_ep|url:${epUrl}|name:${serieName}`,
-            season: 1
-        })
+            episodes.push({
+                number: epNumber,
+                title: `Episodio ${epNum}`,
+                ref: `act:resolve_ep|url:${epUrl}|name:${serieName}`,
+                season: 1
+            })
+        }
+
+        // Ordenamos los episodios de menor a mayor número para una mejor experiencia de usuario
+        episodes.sort((a, b) => a.number - b.number)
+
+        return { series: { title: serieName }, episodes }
+    } catch (e) {
+        kino.log(`Error al procesar episodios: ${e.message}`)
+        throw kino.error('not_found', 'Error al procesar la lista de episodios')
     }
-
-    return { series: { title: serieName }, episodes }
 }
 
 // =====================================================================
